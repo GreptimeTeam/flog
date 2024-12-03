@@ -1,9 +1,10 @@
+//go:build !windows
 // +build !windows
 
 package main
 
 import (
-	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -18,7 +19,7 @@ func Run(option *Option) error {
 	}
 	syscall.Umask(oldMask)
 	if _, err := os.Stat(option.Output); err == nil && !option.Overwrite {
-		return errors.New(option.Output + " already exists. You can overwrite with -w option")
+		fmt.Println(option.Output + " already exists. You can overwrite with -w option")
 	}
 	return Generate(option)
 }

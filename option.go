@@ -26,6 +26,8 @@ Options:
                            - rfc3164
                            - rfc5424
                            - json
+						   - audio_player
+  --start-time string      start time of the logs. (default "now")
   -o, --output string      output filename. Path-like is allowed. (default "generated.log")
   -t, --type string        log output type. available types:
                            - stdout (default)
@@ -45,12 +47,13 @@ Options:
   -l, --loop               loop output forever until killed.
 `
 
-var validFormats = []string{"apache_common", "apache_combined", "apache_error", "rfc3164", "rfc5424", "common_log", "json"}
+var validFormats = []string{"apache_common", "apache_combined", "apache_error", "rfc3164", "rfc5424", "common_log", "json", "audio_player"}
 var validTypes = []string{"stdout", "log", "gz"}
 
 // Option defines log generator options
 type Option struct {
 	Format    string
+	StartTime time.Time
 	Output    string
 	Type      string
 	Number    int
@@ -82,6 +85,7 @@ func errorExit(err error) {
 func defaultOptions() *Option {
 	return &Option{
 		Format:    "apache_common",
+		StartTime: time.Now(),
 		Output:    "generated.log",
 		Type:      "stdout",
 		Number:    1000,
@@ -100,6 +104,17 @@ func ParseFormat(format string) (string, error) {
 		return "", fmt.Errorf("%s is not a valid format", format)
 	}
 	return format, nil
+}
+
+func ParseStartTime(startTime string) (time.Time, error) {
+	if startTime != "now" {
+		startTime, err := time.Parse("2006-01-02 15:04:05", startTime)
+		if err != nil {
+			return time.Now(), err
+		}
+		return startTime, nil
+	}
+	return time.Now(), nil
 }
 
 // ParseType validates the given type
@@ -173,6 +188,7 @@ func ParseOptions() *Option {
 	help := pflag.BoolP("help", "h", false, "Show this help message")
 	version := pflag.BoolP("version", "v", false, "Show version")
 	format := pflag.StringP("format", "f", opts.Format, "Log format")
+	startTime := pflag.String("start-time", "now", "Start time of the logs")
 	output := pflag.StringP("output", "o", opts.Output, "Path-like output filename")
 	logType := pflag.StringP("type", "t", opts.Type, "Log output type")
 	number := pflag.IntP("number", "n", opts.Number, "Number of lines to generate")
@@ -194,6 +210,9 @@ func ParseOptions() *Option {
 		os.Exit(0)
 	}
 	if opts.Format, err = ParseFormat(*format); err != nil {
+		errorExit(err)
+	}
+	if opts.StartTime, err = ParseStartTime(*startTime); err != nil {
 		errorExit(err)
 	}
 	if opts.Type, err = ParseType(*logType); err != nil {

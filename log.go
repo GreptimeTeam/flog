@@ -23,6 +23,8 @@ const (
 	CommonLogFormat = "%s - %s [%s] \"%s %s %s\" %d %d"
 	// JSONLogFormat : {"host": "{host}", "user-identifier": "{user-identifier}", "datetime": "{datetime}", "method": "{method}", "request": "{request}", "protocol": "{protocol}", "status", {status}, "bytes": {bytes}, "referer": "{referer}"}
 	JSONLogFormat = `{"host":"%s", "user-identifier":"%s", "datetime":"%s", "method": "%s", "request": "%s", "protocol":"%s", "status":%d, "bytes":%d, "referer": "%s"}`
+	// Audio player log: {datetime} [{level}] [audio] [{trace-id}] [{stage}] {message}
+	AudioPlayerLogFormat = "%s [%s] [audio] [%s] [%s] %s"
 )
 
 // NewApacheCommonLog creates a log string with apache common log format
@@ -130,4 +132,51 @@ func NewJSONLogFormat(t time.Time) string {
 		gofakeit.Number(0, 30000),
 		gofakeit.URL(),
 	)
+}
+
+type Logs struct {
+	start_time time.Time
+	trace_id   string
+	lines      []string
+	elapsed    time.Duration
+}
+
+func (logs *Logs) record(level string, flag string, message string) {
+	logs.lines = append(logs.lines, fmt.Sprintf(AudioPlayerLogFormat, time.Now().Format("2006-01-02 15:04:05.000"), level, logs.trace_id, flag, message))
+}
+
+func (logs *Logs) finish() {
+	logs.elapsed = time.Since(logs.start_time)
+}
+
+func NewAudioPlayerLogs(t time.Time) Logs {
+	logs := Logs{start_time: t, trace_id: gofakeit.UUID()}
+
+	logs.record("INFO", "A", "acquiring device 'test-device'")
+	time.Sleep(time.Second)
+
+	if acquiring_failed := gofakeit.Number(1, 10) == 1; acquiring_failed {
+		logs.record("ERROR", "A", "acquiring device 'test-device' failed, error: 'device busy'")
+		logs.finish()
+		return logs
+	}
+
+	logs.record("INFO", "P", "device 'test-device' ok, preparing audio file 'my-favorite-song.mp3'")
+	time.Sleep(time.Second)
+
+	logs.record("INFO", "S", "sending audio file 'my-favorite-song.mp3', length: 20s")
+	time.Sleep(time.Second)
+
+	if sending_failed := gofakeit.Number(1, 10) == 1; sending_failed {
+		logs.record("ERROR", "S", "sending audio file 'my-favorite-song.mp3' failed, error: 'connection lost'")
+		logs.finish()
+		return logs
+	}
+
+	logs.record("INFO", "F", "sending audio file 'my-favorite-song.mp3' ok, releasing device 'test-device'")
+	time.Sleep(time.Second)
+
+	logs.record("INFO", "R", "released device 'test-device'")
+	logs.finish()
+	return logs
 }
